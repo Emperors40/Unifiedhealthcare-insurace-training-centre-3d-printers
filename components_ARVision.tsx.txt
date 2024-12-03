@@ -1,0 +1,239 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { ArrowBigRight, Camera, Pause, Play, Zap, RotateCcw, CheckCircle } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+
+const assemblySteps = [
+  { instruction: "Place the base component on a flat surface", duration: 5000, complexity: 1 },
+  { instruction: "Attach the main body to the base", duration: 8000, complexity: 2 },
+  { instruction: "Connect the power supply to the main body", duration: 6000, complexity: 3 },
+  { instruction: "Attach the top cover to the main body", duration: 7000, complexity: 2 },
+  { instruction: "Secure all connections and test the assembly", duration: 10000, complexity: 3 }
+]
+
+function generateHistoricalData(initialValue) {
+  const data = []
+  for (let i = 30; i >= 0; i--) {
+    data.push({
+      day: i,
+      value: Math.max(0, Math.min(100, initialValue + (Math.random() * 20 - 10)))
+    })
+  }
+  return data
+}
+
+export default function ARVision() {
+  const [currentStep, setCurrentStep] = useState(0)
+  const [isRunning, setIsRunning] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [assemblyAccuracy, setAssemblyAccuracy] = useState(100)
+  const [assemblySpeed, setAssemblySpeed] = useState(100)
+  const [feedback, setFeedback] = useState('')
+  const [historicalData, setHistoricalData] = useState({
+    accuracy: [],
+    speed: [],
+  })
+  const [optimizationTips, setOptimizationTips] = useState([])
+
+  const toggleRunning = useCallback(() => setIsRunning(prev => !prev), [])
+
+  const restartSession = useCallback(() => {
+    setCurrentStep(0)
+    setProgress(0)
+    setIsRunning(false)
+    setAssemblyAccuracy(100)
+    setAssemblySpeed(100)
+  }, [])
+
+  useEffect(() => {
+    let timer
+    if (isRunning && currentStep < assemblySteps.length) {
+      const stepDuration = assemblySteps[currentStep].duration
+      timer = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(timer)
+            setCurrentStep(current => {
+              if (current + 1 < assemblySteps.length) {
+                setProgress(0)
+                // Simulate accuracy and speed changes
+                setAssemblyAccuracy(prev => Math.max(70, Math.min(100, prev + (Math.random() * 10 - 5))))
+                setAssemblySpeed(prev => Math.max(70, Math.min(100, prev + (Math.random() * 10 - 5))))
+                return current + 1
+              } else {
+                setIsRunning(false)
+                return current
+              }
+            })
+            return 0
+          }
+          return prev + (100 / stepDuration) * 100
+        })
+      }, 100)
+    }
+    return () => clearInterval(timer)
+  }, [isRunning, currentStep])
+
+  useEffect(() => {
+    // Generate initial historical data
+    setHistoricalData({
+      accuracy: generateHistoricalData(assemblyAccuracy),
+      speed: generateHistoricalData(assemblySpeed),
+    })
+
+    // Simulate real-time updates for historical data
+    const interval = setInterval(() => {
+      setHistoricalData(prev => ({
+        accuracy: [...prev.accuracy.slice(1), { day: 0, value: assemblyAccuracy }],
+        speed: [...prev.speed.slice(1), { day: 0, value: assemblySpeed }],
+      }))
+    }, 5000) // Update every 5 seconds for demonstration
+
+    return () => clearInterval(interval)
+  }, [assemblyAccuracy, assemblySpeed])
+
+  useEffect(() => {
+    // Simulate real-time feedback
+    if (assemblyAccuracy < 80) {
+      setFeedback('Caution: Assembly accuracy is low. Please check your work and follow the AR guides closely.')
+    } else if (assemblyAccuracy < 90) {
+      setFeedback('Good progress. Pay attention to alignment for better accuracy. Use the AR markers for precise positioning.')
+    } else {
+      setFeedback('Excellent work! Your assembly accuracy is high. Keep up the precise work.')
+    }
+
+    // Generate AI-driven optimization tips
+    const tips = [
+      "Adjust your grip on the components for better control",
+      "Take a moment to study the AR overlay before proceeding",
+      "Ensure proper lighting for optimal AR tracking",
+      "Double-check connections before moving to the next step",
+      "Use the zoom feature for a closer look at intricate parts"
+    ]
+    setOptimizationTips(tips.sort(() => 0.5 - Math.random()).slice(0, 3))
+  }, [assemblyAccuracy])
+
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>Advanced AR Assembly Guide</CardTitle>
+        <CardDescription>AI-enhanced AR-assisted assembly process with real-time feedback and optimization</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="ar-view">
+          <TabsList>
+            <TabsTrigger value="ar-view">AR View</TabsTrigger>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
+            <TabsTrigger value="optimization">AI Optimization</TabsTrigger>
+          </TabsList>
+          <TabsContent value="ar-view">
+            <div className="bg-muted h-[400px] w-full flex items-center justify-center relative">
+              <div className="absolute top-4 left-4 bg-background/80 p-2 rounded-md">
+                <Camera className="h-6 w-6" />
+              </div>
+              <div className="text-center p-4 max-w-md">
+                <p className="text-lg font-semibold mb-2">Step {currentStep + 1}</p>
+                <p className="text-muted-foreground">{assemblySteps[currentStep].instruction}</p>
+                <div className="mt-4 h-2 w-full bg-secondary rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary"
+                    style={{ width: `${progress}%`, transition: 'width 0.1s linear' }}
+                  />
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                className="absolute bottom-4 right-4"
+                onClick={toggleRunning}
+              >
+                {isRunning ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              </Button>
+            </div>
+            <div className="mt-4">
+              <div className="flex justify-between items-center mb-2">
+                <p className="text-sm font-medium">Assembly Accuracy</p>
+                <Badge variant={assemblyAccuracy >= 90 ? 'default' : assemblyAccuracy >= 80 ? 'secondary' : 'destructive'}>
+                  {assemblyAccuracy >= 90 ? 'High' : assemblyAccuracy >= 80 ? 'Medium' : 'Low'}
+                </Badge>
+              </div>
+              <Progress value={assemblyAccuracy} className="w-full" />
+            </div>
+            <div className="mt-4 p-2 bg-muted rounded-md">
+              <p className="text-sm font-medium">AI Feedback:</p>
+              <p className="text-sm">{feedback}</p>
+            </div>
+          </TabsContent>
+          <TabsContent value="performance">
+            <div className="space-y-4">
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={historicalData.accuracy}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="day" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="value" name="Accuracy" stroke="#8884d8" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={historicalData.speed}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="day" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="value" name="Speed" stroke="#82ca9d" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </TabsContent>
+          <TabsContent value="optimization">
+            <div className="space-y-4">
+              <h4 className="font-semibold">AI-Driven Optimization Tips:</h4>
+              <ul className="list-disc list-inside">
+                {optimizationTips.map((tip, index) => (
+                  <li key={index} className="text-green-600">
+                    <Zap className="inline-block w-4 h-4 mr-2" />
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4">
+                <h4 className="font-semibold mb-2">Step Complexity:</h4>
+                {assemblySteps.map((step, index) => (
+                  <div key={index} className="flex items-center mb-2">
+                    <span className="w-8">{index + 1}.</span>
+                    <Progress value={step.complexity * 33.33} className="w-full mr-2" />
+                    <span className="text-sm">{step.complexity}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+        <div className="mt-4 flex justify-between">
+          <Button
+            onClick={restartSession}
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Restart AR Session
+          </Button>
+          <Button variant="outline">
+            <CheckCircle className="mr-2 h-4 w-4" />
+            Complete Assembly
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+

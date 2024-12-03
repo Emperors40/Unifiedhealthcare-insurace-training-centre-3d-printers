@@ -1,0 +1,259 @@
+'use client'
+
+import { Suspense, useState, useEffect } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { OrbitControls, useGLTF, Html } from '@react-three/drei'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
+import { Activity, AlertTriangle, CheckCircle, Zap, Heart, Brain, TreesIcon as Lungs, Droplet } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+
+const organIcons = {
+  heart: Heart,
+  brain: Brain,
+  lungs: Lungs,
+  liver: Droplet,
+  kidneys: Droplet,
+}
+
+function HumanModel({ healthData, onOrganClick }) {
+  const { scene } = useGLTF('/assets/3d/duck.glb')
+  return (
+    <group>
+      <primitive object={scene} scale={2} />
+      {Object.entries(healthData).map(([organ, data], index) => {
+        const Icon = organIcons[organ] || Activity
+        return (
+          <Html key={organ} position={[2, index * 0.5 - 1, 0]}>
+            <div className="bg-background/80 p-2 rounded-md w-40 cursor-pointer" onClick={() => onOrganClick(organ)}>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-sm font-semibold">{organ}</p>
+                <Icon className="h-4 w-4" />
+              </div>
+              <Progress value={data.value} className="w-full" />
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs">{data.value}%</span>
+                {data.status === 'normal' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                {data.status === 'warning' && <AlertTriangle className="h-4 w-4 text-yellow-500" />}
+                {data.status === 'critical' && <Activity className="h-4 w-4 text-red-500" />}
+              </div>
+            </div>
+          </Html>
+        )
+      })}
+    </group>
+  )
+}
+
+function getStatus(value) {
+  if (value >= 90) return 'normal'
+  if (value >= 70) return 'warning'
+  return 'critical'
+}
+
+function getRecommendation(organ, value) {
+  if (value >= 90) return `Your ${organ} is in excellent condition. Keep up your current lifestyle habits.`
+  if (value >= 70) return `Your ${organ} health could use some improvement. Consider incorporating more ${organ}-specific exercises and a balanced diet.`
+  return `Your ${organ} requires immediate attention. Please consult a healthcare professional and consider lifestyle changes.`
+}
+
+function generateHistoricalData(currentValue) {
+  const data = []
+  for (let i = 30; i >= 0; i--) {
+    data.push({
+      day: i,
+      value: Math.max(50, Math.min(100, currentValue + (Math.random() * 20 - 10)))
+    })
+  }
+  return data
+}
+
+function predictFutureValue(historicalData) {
+  const lastValue = historicalData[historicalData.length - 1].value
+  return Math.max(50, Math.min(100, lastValue + (Math.random() * 10 - 5)))
+}
+
+export default function HealthMonitoring() {
+  const [healthData, setHealthData] = useState({
+    heart: { value: 95, status: 'normal' },
+    lungs: { value: 90, status: 'normal' },
+    liver: { value: 85, status: 'warning' },
+    kidneys: { value: 92, status: 'normal' },
+    brain: { value: 98, status: 'normal' }
+  })
+  const [selectedOrgan, setSelectedOrgan] = useState(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [aiPrediction, setAiPrediction] = useState(null)
+  const [historicalData, setHistoricalData] = useState({})
+  const [lifestyleImpact, setLifestyleImpact] = useState({})
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHealthData(prevData => {
+        const newData = { ...prevData }
+        Object.keys(newData).forEach(organ => {
+          const change = Math.random() * 10 - 5
+          const newValue = Math.max(50, Math.min(100, newData[organ].value + change))
+          newData[organ] = { value: newValue, status: getStatus(newValue) }
+        })
+        return newData
+      })
+    }, 30000) // Update every 30 seconds for demonstration
+
+    // Generate initial historical data
+    const initialHistoricalData = {}
+    Object.keys(healthData).forEach(organ => {
+      initialHistoricalData[organ] = generateHistoricalData(healthData[organ].value)
+    })
+    setHistoricalData(initialHistoricalData)
+
+    // Generate initial lifestyle impact data
+    const initialLifestyleImpact = {
+      exercise: Math.random() * 20 - 10,
+      diet: Math.random() * 20 - 10,
+      sleep: Math.random() * 20 - 10,
+      stress: Math.random() * 20 - 10
+    }
+    setLifestyleImpact(initialLifestyleImpact)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleOrganClick = (organ) => {
+    setSelectedOrgan(organ)
+    setIsDialogOpen(true)
+    // Simulate AI prediction
+    setTimeout(() => {
+      const historicalOrganData = historicalData[organ]
+      const predictionValue = predictFutureValue(historicalOrganData)
+      setAiPrediction({
+        value: predictionValue,
+        status: getStatus(predictionValue),
+        recommendation: getRecommendation(organ, predictionValue)
+      })
+    }, 1500)
+  }
+
+  const overallHealth = Object.values(healthData).reduce((sum, data) => sum + data.value, 0) / Object.keys(healthData).length
+  const overallStatus = getStatus(overallHealth)
+
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex justify-between items-center">
+          AI-Powered Health Monitoring
+          <Badge variant={overallStatus === 'normal' ? 'default' : overallStatus === 'warning' ? 'secondary' : 'destructive'}>
+            Overall Health: {Math.round(overallHealth)}%
+          </Badge>
+        </CardTitle>
+        <CardDescription>Advanced 3D visualization with AI-driven health predictions and personalized recommendations</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[500px] w-full">
+          <Canvas camera={{ position: [0, 0, 10] }}>
+            <ambientLight intensity={0.5} />
+            <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
+            <pointLight position={[-10, -10, -10]} />
+            <Suspense fallback={null}>
+              <HumanModel healthData={healthData} onOrganClick={handleOrganClick} />
+            </Suspense>
+            <OrbitControls />
+          </Canvas>
+        </div>
+        <p className="mt-4">Data is captured every 30 minutes and when you use your phone. Our advanced AI models process this data to provide accurate health readings, predictions, and personalized recommendations for all your organs.</p>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-[800px]">
+            <DialogHeader>
+              <DialogTitle>{selectedOrgan} Health Analysis</DialogTitle>
+              <DialogDescription>
+                Comprehensive health data, AI predictions, and personalized recommendations
+              </DialogDescription>
+            </DialogHeader>
+            <Tabs defaultValue="current">
+              <TabsList>
+                <TabsTrigger value="current">Current Status</TabsTrigger>
+                <TabsTrigger value="historical">Historical Data</TabsTrigger>
+                <TabsTrigger value="prediction">AI Prediction</TabsTrigger>
+                <TabsTrigger value="lifestyle">Lifestyle Impact</TabsTrigger>
+              </TabsList>
+              <TabsContent value="current">
+                <Table>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="font-medium">Current Health</TableCell>
+                      <TableCell>{healthData[selectedOrgan]?.value}%</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Status</TableCell>
+                      <TableCell>{healthData[selectedOrgan]?.status}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TabsContent>
+              <TabsContent value="historical">
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={historicalData[selectedOrgan]}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="day" />
+                      <YAxis domain={[50, 100]} />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="value" stroke="#8884d8" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </TabsContent>
+              <TabsContent value="prediction">
+                {aiPrediction && (
+                  <Table>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="font-medium">AI Prediction (30 days)</TableCell>
+                        <TableCell>{aiPrediction.value}%</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Predicted Status</TableCell>
+                        <TableCell>{aiPrediction.status}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium" colSpan={2}>
+                          Recommendation
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell colSpan={2}>{aiPrediction.recommendation}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                )}
+              </TabsContent>
+              <TabsContent value="lifestyle">
+                <Table>
+                  <TableBody>
+                    {Object.entries(lifestyleImpact).map(([factor, impact]) => (
+                      <TableRow key={factor}>
+                        <TableCell className="font-medium">{factor.charAt(0).toUpperCase() + factor.slice(1)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <Progress value={Math.abs(impact)} className="w-full mr-2" />
+                            <span>{impact > 0 ? '+' : ''}{impact.toFixed(1)}%</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
+  )
+}
+

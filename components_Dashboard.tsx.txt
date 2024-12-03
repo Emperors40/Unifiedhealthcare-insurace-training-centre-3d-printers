@@ -1,0 +1,53 @@
+'use client'
+
+import { useState } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Activity, Cog, FileStack, Glasses } from 'lucide-react'
+import HealthMonitoring from './HealthMonitoring'
+import Insurance from './Insurance'
+import ProductionLineDesign from './ProductionLineDesign'
+import ARVision from './ARVision'
+
+export default function Dashboard() {
+  const [activeTab, setActiveTab] = useState('health')
+
+  return (
+    <div className="container mx-auto p-4">
+      <h1 className="text-4xl font-bold mb-6">Unified Healthcare Dashboard</h1>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-4 mb-4">
+          <TabsTrigger value="health">
+            <Activity className="mr-2 h-4 w-4" />
+            Health Monitoring
+          </TabsTrigger>
+          <TabsTrigger value="insurance">
+            <FileStack className="mr-2 h-4 w-4" />
+            Insurance
+          </TabsTrigger>
+          <TabsTrigger value="production">
+            <Cog className="mr-2 h-4 w-4" />
+            Production Line
+          </TabsTrigger>
+          <TabsTrigger value="ar">
+            <Glasses className="mr-2 h-4 w-4" />
+            AR Vision
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="health">
+          <HealthMonitoring />
+        </TabsContent>
+        <TabsContent value="insurance">
+          <Insurance />
+        </TabsContent>
+        <TabsContent value="production">
+          <ProductionLineDesign />
+        </TabsContent>
+        <TabsContent value="ar">
+          <ARVision />
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}
+
